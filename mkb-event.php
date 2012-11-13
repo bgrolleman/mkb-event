@@ -48,45 +48,35 @@ function mkbguestlist() {
 	$result = '';
 	// Only Event Managers
 	if ( current_user_can('manage_others_bookings') ) {
-		// Database Setup
-		global $wpdb;
-		$user_table = $wpdb->prefix . "users";
-		$booking_table = $wpdb->prefix . "em_bookings";
-		$xprofile_table = $wpdb->prefix . 'bp_xprofile_data';
-		$membership_table = $wpdb->prefix . 'm_membership_relationships';
-		$eventid = $_REQUEST['eventid'];
-		$sql = "
-			select distinct 
-				$user_table.ID, 
-				display_name, 
-				user_email,
-				booking_comment,
-				value as 'telefoon',
-				level_id
-			from 
-				$user_table inner join 
-				$booking_table on $user_table.ID = person_id left join
-				$xprofile_table on $user_table.ID = user_id and field_id = 4 inner join
-				$membership_table on $user_table.ID = $membership_table.user_id
-			where
-				event_id = $eventid 
-			order by 
-				level_id, display_name
-		";
-		$rows = $wpdb->get_results($sql);
+		$event = em_get_event($_REQUEST['eventid']);
+		$bookings = $event->get_bookings();
+
 		$result = '<style>table.printlines td, table.printlines th { border: 1px solid black; }</style>';
-		$result = $result . '<table class="printlines"><tr><th>Foto</th><th>Naam</th><th>E-Mail</th><th>Telefoon</th><th style="width: 30%">Comment</th></tr>';
-		$level = -1;
-		foreach($rows as $row) {
-			if ( $level != $row->level_id ) {
-				$level = $row->level_id;
-				if ( $level == 1 ) { $result = $result . '<tr><th colspan="5">Leden</th></tr>'; }
-				if ( $level == 5 ) { $result = $result . '<tr><th colspan="5">Gasten</th></tr>'; }
-				if ( $level == 6 ) { $result = $result . '<tr><th colspan="5">Activiteitencommisie</th></tr>'; }
+		$result = $result . '<table class="printlines">
+			<tr>
+				<th>Foto</th>
+				<th>Naam</th>
+				<th>E-Mail</th>
+				<th style="width: 30%">Comment</th>
+				<th>Status</th>
+			</tr>
+			<tr><th colspan="99">Leden</th></tr>	';
+		foreach ( $bookings as $booking ) {
+			$tableline = '
+				<tr>
+				<td>' . str_replace('bpthumb','bpfull',get_avatar($booking->person_id, 64)) . '</td>
+				<td>' . $booking->person->display_name . '</td>
+				<td>' . $booking->person->user_email . '</td>
+				<td>' . $booking->booking_comment . '</td>
+				<td>' . $booking->status_array[$booking->status] . '</td>
+				</tr>';
+			if ( $booking->person->has_cap('mkb_lid') ) {
+				$leden = $leden . $tableline;
+			} else {
+				$gast = $gast . $tableline;
 			}
-			$result = $result . '<tr><td>' . str_replace('bpthumb','bpfull',get_avatar($row->ID, 64)) . '</td><td>' . $row->display_name . '</td><td>' . $row->user_email . '</td><td>' . $row->telefoon . '</td><td>' . $row->booking_comment . '</td></tr>';
 		}
-		$result = $result . '</table>';
+		$result = $result . $leden . '<tr><th colspan="99">Gasten</th></tr>' . $gast . '</table>';
 	};
 	return $result;
 }
