@@ -16,6 +16,7 @@ function mkbeventadmin($options) {
 		// Database Setup
 		global $wpdb;
 		$user_table = $wpdb->prefix . "users";
+		$usermeta_table = $wpdb->prefix . "usermeta";
 		$booking_table = $wpdb->prefix . "em_bookings";
 		$eventid = $options["eventid"];
 
@@ -31,10 +32,13 @@ function mkbeventadmin($options) {
 			$result = $result . ' ' . $row->user_email . ",";
 		}
 		$result = $result . "' /><br/><label>Not niet aangemeld: </label><input size=50 value='";
-		$sql = "select distinct user_email from $user_table where ID not in ( select person_id from $booking_table where event_id = $eventid )";
+		$sql = "select distinct ID, user_email from $user_table where ID not in ( select person_id from $booking_table where event_id = $eventid )";
 		$rows = $wpdb->get_results($sql);
 		foreach($rows as $row) {
-			$result = $result . ' ' . $row->user_email . ",";
+			$user = new WP_User ( $row->ID ); 
+			if ( $user->roles[0] != 'gast' ) {
+				$result = $result . ' ' . $row->user_email . ",";
+			}
 		}
 		$result = $result . "'/><br/><label>Gastenlijst: </label> <a href=\"/evenementen/gastenlijst/?eventid=$eventid\">Link naar gasten overzicht om te printen</a>";
 		$result = $result . "</div>";
